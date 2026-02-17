@@ -4,6 +4,25 @@ import json
 from regex import Pattern
 import heapq
 
+def gpt_bytes_to_unicode_local():
+    """
+    将不能打印的byte转换为高位unicode字符对应二进制，能打印的保留，然后最后转成他们的字符
+    """
+    bs= (
+        list(range(ord('!'),ord('~')+1)) # ord返回字符的unicode编码，即数字
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    cs=bs[:]
+    n=0
+    for i in range(2**8):
+        if i not in bs:
+            bs.append(i)
+            cs.append(2**8+n)
+            n+=1
+    cs = [chr(n) for n in cs]
+    return dict(zip(bs,cs))
+
 class Tokenizer:
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     def __init__(self,vocab:Dict[int,bytes],merges:List[Tuple[bytes,bytes]],special_tokens:List[str]=None):
@@ -21,8 +40,10 @@ class Tokenizer:
         self.token_to_id:Dict[bytes,int] = {token:idx for idx,token in vocab.items()}
         self.id_to_token:Dict[int,bytes] = {idx:token for idx,token in vocab.items()}
 
+        # ========== FIX 1: 修复 merge_dict 的构建方式 ==========
+        # 使用原始字节作为 key，与 vocab 格式保持一致
         self.merge_dict:Dict[Tuple[bytes,bytes],int] = {(a,b): rank for rank, (a,b) in enumerate(merges)}
-
+        # ========== FIX 1 结束 ==========
 
         self.special_tokens:List[str] = special_tokens if special_tokens else []
         self.special_token_set:Set[str] = set(self.special_tokens)
@@ -175,6 +196,13 @@ class Tokenizer:
         Returns:
 
         """
+        # ========== FIX 3: 修复 decode 方法 ==========
+        # GPT-2 tokenizer 的 decode 流程：
+        # 1. 将所有 token 的原始字节拼接起来
+        # 2. 尝试用 UTF-8 解码
+        # 3. 如果失败（单个 token 的情况），用 '�' (替换字符) 替代
+        # 注意：encode 时的反向操作是通过 byte_encoder，但在 decode 时
+        # 我们拼接字节后用 UTF-8 解码，这与 tiktoken 的行为一致
         token_bytes_list:List[bytes] = []
         for id in ids:
             token = self.id_to_token.get(id)
@@ -188,3 +216,4 @@ class Tokenizer:
         all_bytes = b"".join(token_bytes_list)
         # 尝试用 UTF-8 解码，如果失败则替换无效序列
         return all_bytes.decode("utf-8", errors="replace")
+        # ========== FIX 3 结束 ==========

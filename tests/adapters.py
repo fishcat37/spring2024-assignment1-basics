@@ -512,7 +512,10 @@ def run_load_checkpoint(
     """
     raise NotImplementedError
 
-import cs336_basics.tokenizer as tokenizer
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import mirror.tokenizer as tokenizer
 def get_tokenizer(
     vocab: dict[int, bytes],
     merges: list[tuple[bytes, bytes]],

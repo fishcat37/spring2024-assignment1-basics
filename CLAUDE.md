@@ -16,6 +16,7 @@ This is CS336 Spring 2024 Assignment 1: Basics - a deep learning/NLP assignment 
 - 你不能修改 `cs336_basics` 中的任何文件
 - 你可以在 `tests/adapters.py` 中 import 你的 `mirror` 中的代码来测试，但你不能直接在里面添加测试
 - 你可以在 `my_test` 中创建你自己的测试来测试代码
+- 你可以在 `doc` 中写入文档说明
 
 ## Common Commands
 
