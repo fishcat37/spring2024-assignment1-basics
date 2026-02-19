@@ -16,8 +16,8 @@ class Tokenizer:
         """
         self.vocab:Dict[int,bytes] = vocab
         self.merges:List[Tuple[bytes,bytes]] = merges
-        self.byte_encoder:Dict[int,str] = gpt_bytes_to_unicode_local()
-        self.byte_decoder:Dict[str,int] = {v:k for k,v in self.byte_encoder.items()}
+        # self.byte_encoder:Dict[int,str] = gpt_bytes_to_unicode_local()
+        # self.byte_decoder:Dict[str,int] = {v:k for k,v in self.byte_encoder.items()}
         self.token_to_id:Dict[bytes,int] = {token:idx for idx,token in vocab.items()}
         self.id_to_token:Dict[int,bytes] = {idx:token for idx,token in vocab.items()}
 
@@ -35,9 +35,9 @@ class Tokenizer:
                 raise ValueError(f"Special token {s} not found in vocab.")
         if self.special_tokens:
             escaped:List[str] = [re.escape(tok) for tok in sorted(self.special_tokens,key=len,reverse=True)]
-            self._special_split_re:Pattern = re.compile('(' + '|'.join(escaped) + ')')
+            self._special_split_re = re.compile('(' + '|'.join(escaped) + ')')
         else:
-            self._special_split_re:Pattern = None
+            self._special_split_re = None
 
     @classmethod
     def from_files(cls,vocab_filepath:str,merges_filepath:str,special_tokens:List[str]=None):
@@ -61,7 +61,7 @@ class Tokenizer:
         # except Exception as e:
         #     raise IOError(f"Error reading vocab file: {e}")
         try:
-            with open("./vocab.json", "r", encoding="utf-8") as f:
+            with open(vocab_filepath, "r", encoding="utf-8") as f:
                 readable_vocab = json.load(f)
                 vocab = {int(idx): token.encode("utf-8") for idx, token in readable_vocab.items()}
         except Exception as e:

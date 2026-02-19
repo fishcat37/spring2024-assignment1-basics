@@ -6,6 +6,15 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 
 import numpy.typing as npt
 import torch
+from cs336_basics.model import (
+    GeLU,
+    MutiHeadSelfAttention,
+    PositionWiseFeedforward,
+    RMSNorm,
+    ScaledDotProductAttention,
+    Transformer,
+    TransformerBlock,
+)
 
 
 def run_positionwise_feedforward(
@@ -37,13 +46,12 @@ def run_positionwise_feedforward(
         torch.FloatTensor with the output of running your position-wise feedforward network
         with the provided `weights` on the provided `in_features`.
     """
-    # Example:
-    # If your state dict keys match, you can use `load_state_dict()`
-    # my_ffn.load_state_dict(weights)
-    # You can also manually assign the weights
-    # my_ffn.w1.weight.data = weights["w1.weight"]
-    # my_ffn.w2.weight.data = weights["w2.weight"]
-    raise NotImplementedError
+    model = PositionWiseFeedforward(d_model=d_model, d_ff=d_ff, pdrop=0.0, bias=False)
+    with torch.no_grad():
+        model.w1.weight.copy_(weights["w1.weight"])
+        model.w2.weight.copy_(weights["w2.weight"])
+    model.eval()
+    return model(in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -85,7 +93,9 @@ def run_scaled_dot_product_attention(
         with the output of running your scaled dot product attention
         implementation with the provided key, query, and value tensors.
     """
-    raise NotImplementedError
+    model = ScaledDotProductAttention(pdrop=0.0 if pdrop is None else pdrop)
+    model.eval()
+    return model(q=Q, k=K, v=V, mask=mask)
 
 
 def run_multihead_self_attention(
@@ -135,7 +145,25 @@ def run_multihead_self_attention(
         torch.FloatTensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    model = MutiHeadSelfAttention(
+        d_model=d_model,
+        n_heads=num_heads,
+        pdrop=attn_pdrop,
+        bias=False,
+    )
+    with torch.no_grad():
+        model.qproj.weight.copy_(
+            torch.cat([weights[f"q_heads.{i}.weight"] for i in range(num_heads)], dim=0)
+        )
+        model.kproj.weight.copy_(
+            torch.cat([weights[f"k_heads.{i}.weight"] for i in range(num_heads)], dim=0)
+        )
+        model.vproj.weight.copy_(
+            torch.cat([weights[f"v_heads.{i}.weight"] for i in range(num_heads)], dim=0)
+        )
+        model.out_proj.weight.copy_(weights["output_proj.weight"])
+    model.eval()
+    return model(in_features)
 
 
 def run_transformer_block(
@@ -207,7 +235,24 @@ def run_transformer_block(
         FloatTensor of shape (batch_size, sequence_length, d_model) with the output of
         running the Transformer block on the input features.
     """
-    raise NotImplementedError
+    model = TransformerBlock(
+        d_model=d_model,
+        n_heads=num_heads,
+        d_ff=d_ff,
+        pdrop=residual_pdrop,
+        bias=False,
+    )
+    with torch.no_grad():
+        model.attention.qproj.weight.copy_(weights["attn.q_proj.weight"])
+        model.attention.kproj.weight.copy_(weights["attn.k_proj.weight"])
+        model.attention.vproj.weight.copy_(weights["attn.v_proj.weight"])
+        model.attention.out_proj.weight.copy_(weights["attn.output_proj.weight"])
+        model.norm1.gamma.copy_(weights["ln1.weight"])
+        model.ffn.w1.weight.copy_(weights["ffn.w1.weight"])
+        model.ffn.w2.weight.copy_(weights["ffn.w2.weight"])
+        model.norm2.gamma.copy_(weights["ln2.weight"])
+    model.eval()
+    return model(in_features)
 
 
 def run_transformer_lm(
@@ -300,7 +345,36 @@ def run_transformer_lm(
         FloatTensor of shape (batch size, sequence_length, vocab_size) with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    model = Transformer(
+        seq_len=context_length,
+        vocab_size=vocab_size,
+        d_model=d_model,
+        n_heads=num_heads,
+        d_ff=d_ff,
+        n_layers=num_layers,
+        pdrop=residual_pdrop,
+        bias=False,
+    )
+    with torch.no_grad():
+        model.word_embedding.weight.copy_(weights["token_embeddings.weight"])
+        model.position_embedding.weight.copy_(weights["position_embeddings.weight"])
+        for layer_idx in range(num_layers):
+            layer = model.layers[layer_idx]
+            prefix = f"layers.{layer_idx}"
+            layer.attention.qproj.weight.copy_(weights[f"{prefix}.attn.q_proj.weight"])
+            layer.attention.kproj.weight.copy_(weights[f"{prefix}.attn.k_proj.weight"])
+            layer.attention.vproj.weight.copy_(weights[f"{prefix}.attn.v_proj.weight"])
+            layer.attention.out_proj.weight.copy_(
+                weights[f"{prefix}.attn.output_proj.weight"]
+            )
+            layer.norm1.gamma.copy_(weights[f"{prefix}.ln1.weight"])
+            layer.ffn.w1.weight.copy_(weights[f"{prefix}.ffn.w1.weight"])
+            layer.ffn.w2.weight.copy_(weights[f"{prefix}.ffn.w2.weight"])
+            layer.norm2.gamma.copy_(weights[f"{prefix}.ln2.weight"])
+        model.norm.gamma.copy_(weights["ln_final.weight"])
+        model.out_proj.weight.copy_(weights["lm_head.weight"])
+    model.eval()
+    return model(in_indices)
 
 
 def run_rmsnorm(
@@ -331,7 +405,11 @@ def run_rmsnorm(
         FloatTensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    raise NotImplementedError
+    model = RMSNorm(d_model=d_model, eps=eps)
+    with torch.no_grad():
+        model.gamma.copy_(weights["weight"])
+    model.eval()
+    return model(in_features)
 
 
 def run_gelu(in_features: torch.FloatTensor) -> torch.FloatTensor:
@@ -346,7 +424,8 @@ def run_gelu(in_features: torch.FloatTensor) -> torch.FloatTensor:
         FloatTensor of with the same shape as `in_features` with the output of applying
         GELU to each element.
     """
-    raise NotImplementedError
+    model = GeLU()
+    return model(in_features)
 
 
 def run_get_batch(
@@ -390,7 +469,12 @@ def run_softmax(in_features: torch.FloatTensor, dim: int) -> torch.FloatTensor:
         FloatTensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    from cs336_basics.nn_utils import Softmax
+    
+    softmax_fn = Softmax()
+    # Softmax 类期望输入形状为 (b, s, v)，在 dim=-1 上做 softmax
+    # 测试传入的形状是任意的，需要在最后一个维度上做 softmax
+    return softmax_fn(in_features)
 
 
 def run_cross_entropy(inputs: torch.FloatTensor, targets: torch.LongTensor):
@@ -408,7 +492,10 @@ def run_cross_entropy(inputs: torch.FloatTensor, targets: torch.LongTensor):
     Returns:
         Tensor of shape () with the average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    from cs336_basics.nn_utils import CrossEntropyLoss
+    
+    loss_fn = CrossEntropyLoss()
+    return loss_fn(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float):
@@ -423,7 +510,10 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
     Returns:
         None
     """
-    raise NotImplementedError
+    from cs336_basics.nn_utils import GradientClipping
+    
+    clipper = GradientClipping(max_norm=max_l2_norm)
+    clipper(parameters)
 
 
 def get_adamw_cls() -> Type[torch.optim.Optimizer]:
@@ -515,7 +605,7 @@ def run_load_checkpoint(
 import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-import mirror.tokenizer as tokenizer
+import cs336_basics.tokenizer as tokenizer
 def get_tokenizer(
     vocab: dict[int, bytes],
     merges: list[tuple[bytes, bytes]],

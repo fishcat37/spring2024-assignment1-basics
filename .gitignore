@@ -222,3 +222,5 @@ __marimo__/
 /vocab.json
 /merges.txt
 .serena
+data/
+.gitignore

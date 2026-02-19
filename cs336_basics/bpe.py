@@ -182,23 +182,23 @@ def train_bpe(input_path:str|Path,vocab_size:int,special_tokens:List[str]=None)-
                 pair_counts[(new_token_seq[i],new_token_seq[i+1])]+=freq
             # del token_freq_dict[token_seq]
             token_freq_dict[tuple(new_token_seq)]=token_freq_dict.pop(token_seq)
-        byte_encoder=gpt_bytes_to_unicode_local()
+        # byte_encoder=gpt_bytes_to_unicode_local()
         # with open("./vocab.txt","w",encoding="utf-8") as f:
         #     for idx,token in vocab.items():
         #         readable_token = "".join(byte_encoder[b] for b in token)
         #         f.write(f"{idx}\t{readable_token}\n")
-        readable_vocab = {}
-        for idx,token in vocab.items():
-            readable_token = "".join(byte_encoder[b] for b in token)
-            readable_vocab[idx] = readable_token
+        # readable_vocab = {}
+        # for idx,token in vocab.items():
+        #     readable_token = "".join(byte_encoder[b] for b in token)
+        #     readable_vocab[idx] = readable_token
 
-        with open("./vocab.json", "w", encoding="utf-8") as f:
-            json.dump(readable_vocab, f, ensure_ascii=False, indent=2)
-        with open("./merges.txt","w",encoding="utf-8") as f:
-            for token1,token2 in merges:
-                readable_token1 = "".join(byte_encoder[b] for b in token1)
-                readable_token2 = "".join(byte_encoder[b] for b in token2)
-                f.write(f"{readable_token1}\t{readable_token2}\n")
+        # with open("./vocab.json", "w", encoding="utf-8") as f:
+        #     json.dump(readable_vocab, f, ensure_ascii=False, indent=2)
+        # with open("./merges.txt","w",encoding="utf-8") as f:
+        #     for token1,token2 in merges:
+        #         readable_token1 = "".join(byte_encoder[b] for b in token1)
+        #         readable_token2 = "".join(byte_encoder[b] for b in token2)
+        #         f.write(f"{readable_token1}\t{readable_token2}\n")
     return vocab,merges
 
 
