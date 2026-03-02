@@ -224,3 +224,5 @@ __marimo__/
 .serena
 data/
 .gitignore
+AGENTS.md
+CLAUDE.md

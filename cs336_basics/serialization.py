@@ -1,12 +1,15 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
-import os
-import numpy as np
-
 
 def save_checkpoint(model, optimizer, epoch, path):
-    pass
-def load_checkpoint(path, model, optimizer):
-    pass
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'epoch': epoch
+    }, path)
+    
+def load_checkpoint(path, model, optimizer)->int:
+    checkpoint=torch.load(path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch=checkpoint['epoch']
+    return epoch
