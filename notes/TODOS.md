@@ -1,0 +1,4 @@
+- [ ] 更复杂的激活函数
+- [ ] 更好的位置编码
+- [ ] 自己实现最后的线性层和最前的embedding层，尝试参数初始化
+- [ ] 尝试改进版的attention，如deltanet以及gated attention还有滑动窗口注意力
